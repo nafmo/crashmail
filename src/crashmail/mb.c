@@ -41,6 +41,7 @@ struct Messagebase AvailMessagebases[] =
      squish_beforefunc,
      squish_afterfunc,
      squish_importfunc,
+     squish_exportfunc,
      squish_rescanfunc },
 #endif
    { NULL,  /* NULL here marks the end of the array */

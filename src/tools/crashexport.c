@@ -80,6 +80,7 @@ void writearea(osFile fh)
 			{
 	         if(stricmp(msgbase,"MSG")==0)      osFPrintf(fh,"%s %s %s\n",path,tagname,export);            
             else if(stricmp(msgbase,"JAM")==0) osFPrintf(fh,"!%s %s %s\n",path,tagname,export);
+            else if(stricmp(msgbase,"JAM")==0) osFPrintf(fh,"$%s %s %s\n",path,tagname,export);
 	         else if(stricmp(msgbase,"")==0)    osFPrintf(fh,"#%s %s %s\n",tagname,tagname,export);
 	         else                               osFPrintf(fh,"%s:%s %s %s\n",msgbase,path,tagname,export);
 			}
@@ -105,6 +106,7 @@ void writearea(osFile fh)
 			{
 				if(stricmp(msgbase,"MSG")==0)      gedmsgbase="FTS1";
 				else if(stricmp(msgbase,"JAM")==0) gedmsgbase="JAM";
+				else if(stricmp(msgbase,"SQUISH")==0) gedmsgbase="SQUISH";
 				else return;
 
 				if(netmail) gedtype="NETMAIL";

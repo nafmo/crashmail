@@ -7,7 +7,6 @@
 
 /*
  * TODO:
- *  reply linking
  *  option similar to JAM_MAXOPEN
  *  saving KEEPNUM/KEEPDAYS
  */
@@ -142,13 +141,18 @@ bool squish_importfunc(struct MemMessage *mm,struct Area *area)
             {
                 if (wascr)
                 {
+                    wascr = FALSE;
                     if (chunk->Data[c] != 1)
                         iskludge = FALSE;
+                    else if (chunk->Data[c] == 10)
+                    {
+                    	wascr = TRUE;
+                        cr ++;
+                    }
                     else
                         kludgesize ++;
-                    wascr = FALSE;
                 }
-                else if (13 == chunk->Data[c])
+                else if (13 == chunk->Data[c] || 10 == chunk->Data[c])
                 {
                     wascr = TRUE;
                     cr ++;
@@ -173,7 +177,8 @@ bool squish_importfunc(struct MemMessage *mm,struct Area *area)
             {
                 for (ofs = 0; ofs < chunk->Length && temp_p < end_p; ofs ++)
                 {
-                    if (13 != chunk->Data[ofs])
+                    if (13 != chunk->Data[ofs] &&
+                        10 != chunk->Data[ofs])
                         *(temp_p ++) = chunk->Data[ofs];
                 }
                 if (temp_p < end_p) chunk = chunk->Next;
@@ -294,6 +299,7 @@ bool squish_ExportSquishNum(HAREA harea,
         if (MERR_BADF == msgapierr)
         {
             LogWrite(1, SYSTEMERR, "Squish area damaged \"%s\"", area->Path);
+            mmFree(mm);
             return FALSE;
         }
         if (MERR_NOENT == msgapierr)
@@ -301,8 +307,20 @@ bool squish_ExportSquishNum(HAREA harea,
             /* If we get NOENT, it just means that the specified number
              * was invalid. We skip this error
              */
+            mmFree(mm);
             return TRUE;
         }
+        mmFree(mm);
+        return FALSE;
+    }
+
+    msgsize = MsgGetTextLen(hmsg);
+    kludgesize = MsgGetCtrlLen(hmsg);
+
+    if (-1 == msgsize || -1 == kludgesize)
+    {
+        MsgCloseMsg(hmsg);
+        mmFree(mm);
         return FALSE;
     }
 
@@ -312,17 +330,28 @@ bool squish_ExportSquishNum(HAREA harea,
     {
         nomem = TRUE;
         MsgCloseMsg(hmsg);
+        mmFree(mm);
         return FALSE;
     }
 
-    MsgReadMsg(hmsg, &xmsg, 0, 0, NULL, kludgesize, ctrl_p);
+    if (-1 == MsgReadMsg(hmsg, &xmsg, 0, 0, NULL, kludgesize, ctrl_p))
+    {
+    	LogWrite(1, SYSTEMERR, "Cannot read from message %d in \"%s\"",
+        	     num, area->Path);
+		osFree(ctrl_p);
+		MsgCloseMsg(hmsg);
+        mmFree(mm);
+		return FALSE;
+    }
 
+	/* Check if message has already been sent */
     if (area->Flags & AREA_NETMAIL)
     {
         if (xmsg.attr & MSGSENT && !isrescanning)
         {
             osFree(ctrl_p);
             MsgCloseMsg(hmsg);
+            mmFree(mm);
             return TRUE;
         }
 
@@ -335,17 +364,9 @@ bool squish_ExportSquishNum(HAREA harea,
         {
             osFree(ctrl_p);
             MsgCloseMsg(hmsg);
+            mmFree(mm);
             return TRUE;
         }
-    }
-
-    msgsize = MsgGetTextLen(hmsg);
-    kludgesize = MsgGetCtrlLen(hmsg);
-
-    if (-1 == msgsize || -1 == kludgesize)
-    {
-        MsgCloseMsg(hmsg);
-        return FALSE;
     }
 
     mm->OrigNode.Zone  = xmsg.orig.zone;
@@ -458,6 +479,7 @@ bool squish_ExportSquishNum(HAREA harea,
     {
         nomem = TRUE;
         MsgCloseMsg(hmsg);
+        mmFree(mm);
         return FALSE;
     }
     body_p[msgsize] = 0; /* Not zero terminated input */
@@ -549,6 +571,7 @@ bool squish_rescanfunc(struct Area *area, ulong max,
     {
         if (MERR_BADF == msgapierr)
             LogWrite(1, SYSTEMERR, "Squish area damaged \"%s\"", area->Path);
+		LogWrite(1, SYSTEMERR, "Cannot open Squish area \"%s\"", area->Path);
         return FALSE;
     }
 
@@ -608,12 +631,12 @@ static struct _stamp asciiToStamp(const char *datetime)
     char month[4] = { 0,0,0,0 }, *c_p;
 
     if (' ' == datetime[2])
-    { // "Dd Mmm Yy  HH:MM:SS" 
+    { /* "Dd Mmm Yy  HH:MM:SS"  */
         sscanf(datetime, "%d %s %d %d:%d:%d",
                &da, month, &yr, &hh, &mm, &ss);
     }
     else if (' ' == datetime[3])
-    { // "Www Dd Mmm Yy HH:MM"
+    { /* "Www Dd Mmm Yy HH:MM" */
         sscanf(&datetime[4], "%d %s %d %d:%d",
                &da, month, &yr, &hh, &mm);
         ss = 0;
@@ -624,7 +647,7 @@ static struct _stamp asciiToStamp(const char *datetime)
         return stamp;
     }
 
-    // Check month
+    /* Check month */
     c_p = strstr(months, month);
     if (c_p) mo = ((int) (c_p - months)) / 3 + 1;
     else mo = 1;
@@ -859,21 +882,24 @@ static void squish_linkmb(struct Area *area)
                         hmsg = MsgOpenMsg(harea, MOPEN_RW, localnum);
                         if (hmsg)
                         {
-                        	MsgReadMsg(hmsg, &xmsg, 0, 0, NULL, 0, NULL);
                             changed = FALSE;
-                            for (i = 0; i < 9 && !changed; i ++)
-                            {
-                            	/* Don't add if it already has a link */
-                            	if (xmsg.replies[i] == umsgid)
-                                	break;
+                        	if (0 == MsgReadMsg(hmsg, &xmsg, 0, 0, NULL, 0,
+                            	NULL))
+							{
+	                            for (i = 0; i < 9 && !changed; i ++)
+	                            {
+	                            	/* Don't add if it already has a link */
+	                            	if (xmsg.replies[i] == umsgid)
+	                                	break;
 
-								/* Add a link in the first empty slot */
-                                if (xmsg.replies[i] == 0)
-                                {
-                                	xmsg.replies[i] = umsgid;
-                                    changed = TRUE;
-                                }
-                            }
+									/* Add a link in the first empty slot */
+	                                if (xmsg.replies[i] == 0)
+	                                {
+	                                	xmsg.replies[i] = umsgid;
+	                                    changed = TRUE;
+	                                }
+	                            }
+							}
                             if (changed)
                             {
                             	MsgWriteMsg(hmsg, 0, &xmsg, NULL, 0, 0, 0,
