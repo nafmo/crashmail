@@ -6,7 +6,7 @@ PLATFORMDEF = -DPLATFORM_LINUX
 MBDEFS = -DMSGBASE_JAM -DMSGBASE_MSG -DMSGBASE_SQUISH
 NLDEFS = -DNODELIST_CMNL
 EXTDEFS = -DUNIX
-EXTLIB = /home/peter/src/smapi/libsmapilnx.a
+EXTLIB = /home/peter/download/smapi-1.5.7/libsmapilnx.a
 
 EXESUFFIX = 
 
@@ -16,7 +16,7 @@ DEFS = $(PLATFORMDEF) $(MBDEFS) $(NLDEFS) $(EXTDEFS)
 
 BINDIR = ../bin
 OBJDIR = obj
-INCDIR = -I./ -I/home/peter/src/smapi
+INCDIR = -I./ -I/home/peter/download/smapi-1.5.7/
 
 # Libraries
 
@@ -26,9 +26,10 @@ CMNLLIB = cmnllib/cmnllib.a
 
 # Commands
 
-CC = gcc $(DEFS) $(INCDIR) -Wall #--ansi
+#CC = gcc $(DEFS) $(INCDIR) -Wall #--ansi
+CC = gcc -g $(DEFS) $(INCDIR) -Wall #--ansi
 RM = rm -f
-STRIP = strip
+STRIP = true #strip
 
 # Objects
 

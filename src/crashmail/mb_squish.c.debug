@@ -276,6 +276,8 @@ bool squish_ExportSquishNum(HAREA harea,
     bool wascr, stay;
     ulong msgsize, kludgesize;
 
+printf("ExportSquishNum %ld BEGIN\n", num);
+
     mm = mmAlloc();
     if (!mm)
         return FALSE;
@@ -289,6 +291,7 @@ bool squish_ExportSquishNum(HAREA harea,
         hmsg = MsgOpenMsg(harea, MOPEN_READ, num);
     }
 
+puts("1");
     if (NULL == hmsg)
     {
         if (MERR_BADF == msgapierr)
@@ -305,6 +308,7 @@ bool squish_ExportSquishNum(HAREA harea,
         }
         return FALSE;
     }
+puts("2");
 
     /* Fetch XMSG header and kludges */
     ctrl_p = osAlloc(kludgesize);
@@ -315,7 +319,9 @@ bool squish_ExportSquishNum(HAREA harea,
         return FALSE;
     }
 
+puts("3");
     MsgReadMsg(hmsg, &xmsg, 0, 0, NULL, kludgesize, ctrl_p);
+puts("4");
 
     if (area->Flags & AREA_NETMAIL)
     {
@@ -339,6 +345,8 @@ bool squish_ExportSquishNum(HAREA harea,
         }
     }
 
+puts("5");
+
     msgsize = MsgGetTextLen(hmsg);
     kludgesize = MsgGetCtrlLen(hmsg);
 
@@ -347,6 +355,8 @@ bool squish_ExportSquishNum(HAREA harea,
         MsgCloseMsg(hmsg);
         return FALSE;
     }
+
+puts("6");
 
     mm->OrigNode.Zone  = xmsg.orig.zone;
     mm->OrigNode.Net   = xmsg.orig.net;
@@ -357,17 +367,22 @@ bool squish_ExportSquishNum(HAREA harea,
     mm->DestNode.Node  = xmsg.dest.node;
     mm->DestNode.Point = xmsg.dest.point;
 
+puts("7");
+
    	if (area->Flags & AREA_NETMAIL)
       	strcpy(mm->Area, "");
    	else
       	strcpy(mm->Area, area->Tagname);
+puts("8");
 
     mystrncpy(mm->To, xmsg.to, 36);
     mystrncpy(mm->From, xmsg.from, 36);
     mystrncpy(mm->Subject, xmsg.subj, 72);
+puts("9");
 
     if (xmsg.date_written.date.mo < 1 || xmsg.date_written.date.mo > 12)
         xmsg.date_written = nowstamp();
+puts("10");
 
     sprintf(mm->DateTime, "%02d %c%c%c %02d  %02d:%02d:%02d",
             xmsg.date_written.date.da,
@@ -378,6 +393,7 @@ bool squish_ExportSquishNum(HAREA harea,
             xmsg.date_written.time.hh,
             xmsg.date_written.time.mm,
             xmsg.date_written.time.ss);
+puts("12");
 
     /* Attributes are the same as in the Squish database, but some shouldn't */
     /* be exported                                                           */
@@ -386,6 +402,7 @@ bool squish_ExportSquishNum(HAREA harea,
                 FLAG_IRRR|FLAG_AUDIT|FLAG_HOLD);
     mm->Cost = 0;
     mm->msgnum = num;
+puts("13");
 
     /* Add our own kludges */
     if (area->Flags & AREA_NETMAIL)
@@ -415,9 +432,11 @@ bool squish_ExportSquishNum(HAREA harea,
             mmAddLine(mm, buf);
         }
     }
+puts("14");
 
     if((config.cfg_Flags & CFG_ADDTID) && !isrescanning)
         AddTID(mm);
+puts("15");
 
     if(isrescanning)
     {
@@ -428,6 +447,7 @@ bool squish_ExportSquishNum(HAREA harea,
                 area->Aka->Node.Point);
         mmAddLine(mm,buf);
     }
+puts("16");
 
     /* Save kludges, except for INTL, FMPT, TOPT, if present */
     kludges_p = CvtCtrlToKludge(ctrl_p);
@@ -448,9 +468,11 @@ bool squish_ExportSquishNum(HAREA harea,
             }
         }
     }
+puts("17");
 
     osFree(kludges_p);
     osFree(ctrl_p);
+puts("18");
 
     /* Fetch body and save */
     body_p = osAlloc(msgsize + 1);
@@ -461,8 +483,10 @@ bool squish_ExportSquishNum(HAREA harea,
         return FALSE;
     }
     body_p[msgsize] = 0; /* Not zero terminated input */
+puts("19");
 
     MsgReadMsg(hmsg, NULL, 0, msgsize, body_p, 0, NULL);
+puts("20");
 
     start_p = body_p;
     end_p = &body_p[msgsize];
@@ -482,26 +506,34 @@ bool squish_ExportSquishNum(HAREA harea,
             wascr = TRUE;
         }
     }
+puts("21");
 
     osFree(body_p);
+puts("22");
+printf("mm=%p handlefunc=%p\n",(void*)mm,(void*)handlefunc);
 
     if(!(*handlefunc)(mm))
     {
+puts("22 FAIL");
         mmFree(mm);
         MsgCloseMsg(hmsg);
         return FALSE;
     }
+puts("23");
 
     mmFree(mm);
+puts("24");
 
     if (!isrescanning)
     {
+puts("25");
         scan_total ++;
 
         /* Remove messages marked with kill/sent if allowed */
         if ((config.cfg_Flags & CFG_ALLOWKILLSENT) &&
             (xmsg.attr & MSGKILL) && (area->Flags & AREA_NETMAIL))
         {
+puts("26");
             MsgCloseMsg(hmsg);
             if (0 == MsgKillMsg(harea, num))
             {
@@ -514,6 +546,7 @@ bool squish_ExportSquishNum(HAREA harea,
         }
         else
         {
+puts("27");
             /* Mark netmail as sent, echomail as scanned */
             if (area->Flags & AREA_NETMAIL)
             {
@@ -532,6 +565,7 @@ bool squish_ExportSquishNum(HAREA harea,
         }
     }
 
+printf("ExportSquishNum %ld END\n", num);
     return TRUE;
 }
 
@@ -756,6 +790,7 @@ static void squish_linkmb(struct Area *area)
     {
     	/* Translate to UMSGID */
     	umsgid = MsgMsgnToUid(harea, msgn);
+printf("msgn=%d umsgid=%ld",msgn,umsgid);
 
     	/* Open message */
         hmsg = MsgOpenMsg(harea, MOPEN_READ, msgn);
@@ -763,6 +798,7 @@ static void squish_linkmb(struct Area *area)
         {
         	/* Read kludges and find MSGID */
         	MsgReadMsg(hmsg, NULL, 0, 0, NULL, sizeof (buf), buf);
+/*printf(" [%s]",buf);*/
             msgid_p = strstr(buf, "\x01" "MSGID: ");
             if (msgid_p)
             {
@@ -770,6 +806,7 @@ static void squish_linkmb(struct Area *area)
             	msgid_p += 8;
 	            end_p = strchr(msgid_p, (char) 1);
 	            if (!end_p) end_p = buf + strlen(buf);
+printf(", has MSGID");
 
 				/* Allocate a node */
                 temp_p = (struct squish_msgidTree *)
@@ -787,6 +824,7 @@ static void squish_linkmb(struct Area *area)
 	                	strncpy(temp_p->msgid, msgid_p, len - 1);
 	                	temp_p->msgid[len - 1] = 0;
                         ok = addToTree(&tree, temp_p);
+printf("='%s'",temp_p->msgid);
                     }
                     else
                     	ok = FALSE;
@@ -813,8 +851,10 @@ static void squish_linkmb(struct Area *area)
 					return;
                 }
 			}
+else printf(", has no MSGID");
             MsgCloseMsg(hmsg);
         }
+fputc('\n', stdout);
     }
 
 	/* Read all REPLYs and link */
@@ -822,6 +862,7 @@ static void squish_linkmb(struct Area *area)
     {
     	/* Translate to UMSGID */
     	umsgid = MsgMsgnToUid(harea, msgn);
+printf("msgn=%d umsgid=%ld",msgn,umsgid);
 
     	/* Open message */
         hmsg = MsgOpenMsg(harea, MOPEN_RW, msgn);
@@ -836,16 +877,19 @@ static void squish_linkmb(struct Area *area)
 	            msgid_p = strstr(buf, "\x01" "REPLY: ");
 	            if (msgid_p)
 	            {
+printf(", has REPLY");
 	            	/* REPLY was found, check how long it is */
 	            	msgid_p += 8;
 		            end_p = strchr(msgid_p, (char) 1);
 	                if (end_p) *end_p = 0;
+printf("='%s'",msgid_p);
 
 					/* Now see if we can find the message it replies to */
                     temp_p = findInTree(tree, msgid_p);
 
                     if (temp_p)
                     {
+printf(", matches '%s' umsgid=%ld",temp_p->msgid,temp_p->msgnum);
                     	/* Yup, we have the original all right */
                         /* Set the this-is-a-reply-to number */
                         xmsg.replyto = temp_p->msgnum;
@@ -856,35 +900,47 @@ static void squish_linkmb(struct Area *area)
 						/* Set the this-has-replies-in number */
                         localnum = MsgUidToMsgn(harea, temp_p->msgnum,
                                                 UID_EXACT);
+printf(" local=%d",localnum);
                         hmsg = MsgOpenMsg(harea, MOPEN_RW, localnum);
                         if (hmsg)
                         {
+printf(", exists");
                         	MsgReadMsg(hmsg, &xmsg, 0, 0, NULL, 0, NULL);
                             changed = FALSE;
                             for (i = 0; i < 9 && !changed; i ++)
                             {
+printf(", replies[%d]=%ld",i,xmsg.replies[i]);
                             	/* Don't add if it already has a link */
                             	if (xmsg.replies[i] == umsgid)
+{
+printf("=this");
                                 	break;
+}
 
 								/* Add a link in the first empty slot */
                                 if (xmsg.replies[i] == 0)
                                 {
+printf("=>%ld",umsgid);
                                 	xmsg.replies[i] = umsgid;
                                     changed = TRUE;
                                 }
                             }
                             if (changed)
                             {
+printf(", write");
                             	MsgWriteMsg(hmsg, 0, &xmsg, NULL, 0, 0, 0,
                                             NULL);
                             }
+else printf(", no write");
                         }
+else printf(", does not exist");
                     }
 				}
+else printf(", has no REPLY");
 			}
             if (hmsg) MsgCloseMsg(hmsg);
 		}
+fputc('\n', stdout);
     }
 
 	/* Destruct MSGID tree */

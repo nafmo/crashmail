@@ -8,6 +8,10 @@
 #include "mb_jam.h"
 #endif
 
+#ifdef MSGBASE_SQUISH
+#include "mb_squish.h"
+#endif
+
 struct Messagebase AvailMessagebases[] =
 {
 #ifdef MSGBASE_MSG
@@ -29,6 +33,15 @@ struct Messagebase AvailMessagebases[] =
      jam_importfunc,
      jam_exportfunc,
      jam_rescanfunc },
+#endif
+#ifdef MSGBASE_SQUISH
+   { "SQUISH",
+     "Squish Messagebase",
+     0,
+     squish_beforefunc,
+     squish_afterfunc,
+     squish_importfunc,
+     squish_rescanfunc },
 #endif
    { NULL,  /* NULL here marks the end of the array */
      NULL,
