@@ -3,18 +3,20 @@
 # General
 
 PLATFORMDEF = -DPLATFORM_LINUX
-MBDEFS = -DMSGBASE_JAM -DMSGBASE_MSG
+MBDEFS = -DMSGBASE_JAM -DMSGBASE_MSG -DMSGBASE_SQUISH
 NLDEFS = -DNODELIST_CMNL
+EXTDEFS = -DUNIX
+EXTLIB = /home/peter/src/smapi/libsmapilnx.a
 
 EXESUFFIX = 
 
-DEFS = $(PLATFORMDEF) $(MBDEFS) $(NLDEFS)
+DEFS = $(PLATFORMDEF) $(MBDEFS) $(NLDEFS) $(EXTDEFS)
 
 # Directories
 
 BINDIR = ../bin
 OBJDIR = obj
-INCDIR = ./
+INCDIR = -I./ -I/home/peter/src/smapi
 
 # Libraries
 
@@ -24,7 +26,7 @@ CMNLLIB = cmnllib/cmnllib.a
 
 # Commands
 
-CC = gcc $(DEFS) -I $(INCDIR) -Wall --ansi
+CC = gcc $(DEFS) $(INCDIR) -Wall #--ansi
 RM = rm -f
 STRIP = strip
 
@@ -39,6 +41,7 @@ SHOBJS = $(OBJDIR)/jblist.o \
 MBOBJS = $(OBJDIR)/mb.o \
       	 $(OBJDIR)/mb_msg.o \
 	 $(OBJDIR)/mb_jam.o \
+	 $(OBJDIR)/mb_squish.o \
 	 jamlib/jamlib.a
 
 NLOBJS = $(OBJDIR)/nl.o \
@@ -70,7 +73,7 @@ files : $(BINDIR)/crashmail$(EXESUFFIX) \
 	$(BINDIR)/crashexport$(EXESUFFIX)            
 
 $(BINDIR)/crashmail$(EXESUFFIX) : $(CMOBJS) $(SHOBJS) $(NLOBJS) $(MBOBJS) $(OSLIB)
-	$(CC) -o $(BINDIR)/crashmail$(EXESUFFIX) $(CMOBJS) $(SHOBJS) $(NLOBJS) $(MBOBJS) $(OSLIB)
+	$(CC) -o $(BINDIR)/crashmail$(EXESUFFIX) $(CMOBJS) $(SHOBJS) $(NLOBJS) $(MBOBJS) $(OSLIB) $(EXTLIB)
 	$(STRIP) $(BINDIR)/crashmail$(EXESUFFIX)
 	
 $(BINDIR)/crashstats$(EXESUFFIX) : tools/crashstats.c $(SHOBJS) $(OSLIB)
@@ -171,6 +174,9 @@ $(OBJDIR)/mb_msg.o : crashmail/mb_msg.c
 
 $(OBJDIR)/mb_jam.o : crashmail/mb_jam.c
 	$(CC) -c crashmail/mb_jam.c -o $(OBJDIR)/mb_jam.o
+
+$(OBJDIR)/mb_squish.o : crashmail/mb_squish.c
+	$(CC) -c crashmail/mb_squish.c -o $(OBJDIR)/mb_squish.o
 
 # nl
 
