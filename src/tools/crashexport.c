@@ -144,6 +144,7 @@ void writearea(osFile fh)
 			{
             if(stricmp(msgbase,"MSG")==0)      timflags="";
             else if(stricmp(msgbase,"JAM")==0) timflags=" -J";
+            else if(stricmp(msgbase,"SQUISH")==0) timflags=" -$";
 				else return;
 
             if(netmail) timkeyword="NetArea";

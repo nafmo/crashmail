@@ -126,8 +126,17 @@ bool squish_importfunc(struct MemMessage *mm,struct Area *area)
         xmsg.utc_ofs = 0;
         strcpy(xmsg.__ftsc_date, mm->DateTime);
 
-        /* Attributes are the same as in the PKT file */
-        xmsg.attr = mm->Attr;
+        /* Attributes are the same as in the PKT file, plus scanned if echo */
+        if (mm->Area[0] == 0)
+        {
+            /* Netmail */
+            xmsg.attr = mm->Attr;
+        }
+        else
+        {
+            /* Echomail */
+            xmsg.attr = mm->Attr | MSGSCANNED;
+        }
     
         /* Count amount of kludges (before body) */
         iskludge = TRUE;
@@ -164,7 +173,7 @@ bool squish_importfunc(struct MemMessage *mm,struct Area *area)
 
         /* Move kludges over to a kludge buffer */
         /* (If we fail to allocate, we put all in the body, which might */
-        /*  not be the best of stragegies, but at least is one) */
+        /*  not be the best of strategies, but at least is one) */
         kludge_p = osAlloc(kludgesize + 1);
         ofs = 0;
         chunk = (struct TextChunk *) mm->TextChunks.First;
@@ -232,7 +241,6 @@ bool squish_importfunc(struct MemMessage *mm,struct Area *area)
         /* SEEN-BY */
         if ((config.cfg_Flags & CFG_IMPORTSEENBY) && mm->Area[0] != 0)
         {
-            seenby_p = mmMakeSeenByBuf(&mm->SeenBy);
             if (seenby_p)
             {
                 MsgWriteMsg(hmsg, 1, NULL, seenby_p, strlen(seenby_p),
